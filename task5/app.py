@@ -111,6 +111,10 @@ with st.sidebar:
     - **Target**: Close (VND)
     """)
 
+# ── Session state để giữ data khi re-run ─────────────────────
+if "df_uploaded" not in st.session_state:
+    st.session_state.df_uploaded = None
+
 # ── Input method ──────────────────────────────────────────────
 col1, col2 = st.columns([1, 1])
 
@@ -122,8 +126,19 @@ with col1:
     )
 
     if uploaded:
-        df = pd.read_csv(uploaded)
-        st.success(f"✅ Đọc được {len(df)} rows, {len(df.columns)} cột")
+        try:
+            df = pd.read_csv(uploaded, encoding="utf-8")
+            if df.empty or len(df.columns) == 0:
+                st.error("❌ File CSV rỗng hoặc không đọc được!")
+            else:
+                st.session_state.df_uploaded = df
+                st.success(f"✅ Đọc được {len(df)} rows, {len(df.columns)} cột")
+                st.dataframe(df.tail(10), use_container_width=True)
+        except Exception as e:
+            st.error(f"❌ Lỗi đọc file: {e}")
+    elif st.session_state.df_uploaded is not None:
+        df = st.session_state.df_uploaded
+        st.success(f"✅ Đang dùng file đã upload: {len(df)} rows")
         st.dataframe(df.tail(10), use_container_width=True)
 
 with col2:
@@ -149,8 +164,8 @@ predict_btn = st.button("🚀 Predict Next Day Close Price")
 if predict_btn:
     try:
         # Prepare data
-        if uploaded is not None:
-            df = pd.read_csv(uploaded)
+        if st.session_state.df_uploaded is not None:
+            df = st.session_state.df_uploaded
             features = ["Open", "High", "Low", "Close", "Volume"]
             missing = [f for f in features if f not in df.columns]
             if missing:
@@ -212,9 +227,9 @@ if predict_btn:
                 </div>""", unsafe_allow_html=True)
 
             # Chart
-            if uploaded is not None:
+            if st.session_state.df_uploaded is not None:
                 st.markdown("### 📊 Price History + Prediction")
-                chart_df = df["Close"].tail(30).reset_index(drop=True)
+                chart_df = st.session_state.df_uploaded["Close"].tail(30).reset_index(drop=True)
                 pred_point = pd.Series([None] * len(chart_df) + [predicted])
                 hist_point = pd.concat([chart_df, pd.Series([None])], ignore_index=True)
                 chart_data = pd.DataFrame({"Historical": hist_point, "Predicted": pred_point})

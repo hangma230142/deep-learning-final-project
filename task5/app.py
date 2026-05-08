@@ -2,243 +2,347 @@ import streamlit as st
 import requests
 import numpy as np
 import pandas as pd
-import json
 
-# ── Page config ──────────────────────────────────────────────
+# ── Page config ───────────────────────────────────────────────
 st.set_page_config(
-    page_title="VN Stock Predictor",
-    page_icon="📈",
+    page_title="VN Stock Price Predictor",
     layout="wide",
 )
 
-# ── Custom CSS ────────────────────────────────────────────────
+# ── CSS ───────────────────────────────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
-    html, body, [class*="css"] {
-        font-family: 'DM Sans', sans-serif;
-        background-color: #0a0e1a;
-        color: #e2e8f0;
-    }
+html, body, [class*="css"] {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background-color: #001D3F;
+    color: #ffffff;
+}
 
-    .main-title {
-        font-family: 'Space Mono', monospace;
-        font-size: 2.5rem;
-        font-weight: 700;
-        color: #00ff9d;
-        letter-spacing: -1px;
-    }
+/* Header */
+.page-header {
+    padding: 2.5rem 0 1.5rem 0;
+    color: #ffffff;
+    border-bottom: 2px solid #1a1a2e;
+    margin-bottom: 2rem;
+}
+.page-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.9rem;
+    font-weight: 600;
+    color: #fffff;
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+.page-desc {
+    font-size: 0.9rem;
+    color: #6b7280;
+    margin-top: 0.4rem;
+    font-weight: 300;
+}
 
-    .subtitle {
-        color: #64748b;
-        font-size: 1rem;
-        margin-bottom: 2rem;
-    }
+/* Section labels */
+.section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fffff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid #e5e7eb;
+}
 
-    .metric-card {
-        background: linear-gradient(135deg, #0f172a, #1e293b);
-        border: 1px solid #1e3a5f;
-        border-radius: 12px;
-        padding: 1.5rem;
-        text-align: center;
-    }
+/* Info box */
+.info-box {
+    background: #eef2ff;
+    border-left: 3px solid #4f46e5;
+    padding: 0.85rem 1.2rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.85rem;
+    color: #3730a3;
+    margin: 0.75rem 0 1.25rem 0;
+    line-height: 1.6;
+}
 
-    .metric-value {
-        font-family: 'Space Mono', monospace;
-        font-size: 2rem;
-        font-weight: 700;
-        color: #00ff9d;
-    }
+/* Result cards */
+.result-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+.result-card {
+    flex: 1;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1.4rem 1.6rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.result-card-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 0.5rem;
+}
+.result-card-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #1a1a2e;
+    line-height: 1.1;
+}
+.result-card-unit {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-top: 0.3rem;
+}
+.positive { color: #059669; }
+.negative { color: #dc2626; }
 
-    .metric-label {
-        font-size: 0.85rem;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
+/* Predict button */
+.stButton > button {
+    background-color: #1a1a2e;
+    color: #ffffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    border: none;
+    border-radius: 6px;
+    padding: 0.7rem 2rem;
+    width: 100%;
+    transition: background 0.2s;
+}
+.stButton > button:hover {
+    background-color: #2d2d4e;
+}
 
-    .stButton > button {
-        background: linear-gradient(90deg, #00ff9d, #00b4d8);
-        color: #0a0e1a;
-        font-family: 'Space Mono', monospace;
-        font-weight: 700;
-        border: none;
-        border-radius: 8px;
-        padding: 0.75rem 2rem;
-        font-size: 1rem;
-        width: 100%;
-        cursor: pointer;
-    }
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background-color: #001D3F;
+    border-right: 1px solid #e5e7eb;
+}
+.sidebar-section-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: #ffffff;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 0.6rem;
+}
+.sidebar-item {
+    font-size: 0.85rem;
+    color: #ffffff;
+    padding: 0.25rem 0;
+    line-height: 1.6;
+}
+.model-tag {
+    display: inline-block;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.75rem;
+    color: #374151;
+    padding: 0.15rem 0.5rem;
+    margin: 0.15rem 0.15rem 0.15rem 0;
+}
 
-    .info-box {
-        background: #0f172a;
-        border-left: 3px solid #00ff9d;
-        padding: 1rem 1.5rem;
-        border-radius: 0 8px 8px 0;
-        margin: 1rem 0;
-        font-size: 0.9rem;
-        color: #94a3b8;
-    }
+/* Divider */
+hr { border: none; border-top: 1px solid #e5e7eb; margin: 1.5rem 0; }
+
+/* Hide streamlit default elements */
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
-API_URL = "http://localhost:8000/predict"
+# ── Constants ─────────────────────────────────────────────────
+DEFAULT_API = "http://localhost:8000/predict"
+FEATURES    = ["Open", "High", "Low", "Close", "Volume"]
+WINDOW_SIZE = 60
 
-# ── Header ────────────────────────────────────────────────────
-st.markdown('<div class="main-title">📈 VN Stock Predictor</div>', unsafe_allow_html=True)
-st.markdown('<div class="subtitle">Deep Learning · LSTM · Vietnam Market</div>', unsafe_allow_html=True)
-st.markdown("---")
+# ── Session state ─────────────────────────────────────────────
+if "df" not in st.session_state:
+    st.session_state.df = None
 
 # ── Sidebar ───────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("### ⚙️ Settings")
-    api_url = st.text_input("API URL", value=API_URL)
-    st.markdown("---")
-    st.markdown("### 📋 How to use")
-    st.markdown("""
-    1. Upload CSV hoặc nhập giá thủ công
-    2. Cần **60 rows** dữ liệu lịch sử
-    3. Bấm **Predict** để dự đoán
-    4. Kết quả là giá Close ngày tiếp theo
-    """)
-    st.markdown("---")
-    st.markdown("### 📊 Model Info")
-    st.markdown("""
-    - **Model**: LSTM (units=128)
-    - **Window**: 60 ngày
-    - **Features**: Open/High/Low/Close/Volume
-    - **Target**: Close (VND)
-    """)
+    st.markdown('<div class="sidebar-section-title">Configuration</div>', unsafe_allow_html=True)
+    api_url = st.text_input("API Endpoint", value=DEFAULT_API, label_visibility="collapsed")
+    st.markdown(f'<div class="sidebar-item" style="color:#6b7280;font-size:0.78rem;">{api_url}</div>', unsafe_allow_html=True)
 
-# ── Session state để giữ data khi re-run ─────────────────────
-if "df_uploaded" not in st.session_state:
-    st.session_state.df_uploaded = None
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section-title">How It Works</div>', unsafe_allow_html=True)
+    for step in [
+        "Upload a CSV file with at least 60 rows",
+        "Columns required: Open, High, Low, Close, Volume",
+        "The model uses the most recent 60 rows as input",
+        "Click Predict to get the next-day Close price",
+    ]:
+        st.markdown(f'<div class="sidebar-item">— {step}</div>', unsafe_allow_html=True)
 
-# ── Input method ──────────────────────────────────────────────
-col1, col2 = st.columns([1, 1])
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-section-title">Model Details</div>', unsafe_allow_html=True)
+    for tag in ["GRU · units=128", "Window: 60 days", "Target: Close (VND)", "Trained on HPG"]:
+        st.markdown(f'<span class="model-tag">{tag}</span>', unsafe_allow_html=True)
 
-with col1:
-    st.markdown("### 📂 Upload CSV")
+# ── Header ────────────────────────────────────────────────────
+st.markdown("""
+<div class="page-header">
+    <div class="page-title">VN Stock Price Predictor</div>
+    <div class="page-desc">
+        Deep learning model for Vietnam stock market · Next-day Close price prediction
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# ── Input columns ─────────────────────────────────────────────
+col_upload, col_manual = st.columns([1, 1], gap="large")
+
+with col_upload:
+    st.markdown('<div class="section-label">Upload Historical Data</div>', unsafe_allow_html=True)
+
     uploaded = st.file_uploader(
-        "Upload file CSV (60 rows, 5 cột: Open/High/Low/Close/Volume)",
-        type=["csv"]
+        "CSV file — at least 60 rows, columns: Open / High / Low / Close / Volume",
+        type=["csv"],
+        label_visibility="collapsed",
     )
 
     if uploaded:
         try:
-            df = pd.read_csv(uploaded, encoding="utf-8")
-            if df.empty or len(df.columns) == 0:
-                st.error("❌ File CSV rỗng hoặc không đọc được!")
+            df = pd.read_csv(uploaded)
+            missing = [f for f in FEATURES if f not in df.columns]
+            if missing:
+                st.error(f"Missing columns: {', '.join(missing)}")
+            elif len(df) < WINDOW_SIZE:
+                st.error(f"Need at least {WINDOW_SIZE} rows. File has {len(df)}.")
             else:
-                st.session_state.df_uploaded = df
-                st.success(f"✅ Đọc được {len(df)} rows, {len(df.columns)} cột")
-                st.dataframe(df.tail(10), use_container_width=True)
+                st.session_state.df = df
+                st.success(f"Loaded {len(df)} rows successfully.")
+                st.dataframe(
+                    df[FEATURES].tail(10).style.format("{:,.0f}"),
+                    use_container_width=True,
+                    height=280,
+                )
         except Exception as e:
-            st.error(f"❌ Lỗi đọc file: {e}")
-    elif st.session_state.df_uploaded is not None:
-        df = st.session_state.df_uploaded
-        st.success(f"✅ Đang dùng file đã upload: {len(df)} rows")
-        st.dataframe(df.tail(10), use_container_width=True)
+            st.error(f"Could not read file: {e}")
+    elif st.session_state.df is not None:
+        df = st.session_state.df
+        st.success(f"Using previously uploaded file — {len(df)} rows.")
+        st.dataframe(
+            df[FEATURES].tail(10).style.format("{:,.0f}"),
+            use_container_width=True,
+            height=280,
+        )
 
-with col2:
-    st.markdown("### ✏️ Nhập giá thủ công (5 ngày gần nhất)")
-    st.markdown('<div class="info-box">Nếu upload CSV, phần này sẽ bị bỏ qua.</div>', unsafe_allow_html=True)
+with col_manual:
+    st.markdown('<div class="section-label">Manual Input (Last 5 Days)</div>', unsafe_allow_html=True)
+    st.markdown("""
+    <div class="info-box">
+        If a CSV file is uploaded above, manual input is ignored.
+        Use this option only when no CSV is available.
+        The 5 rows will be repeated to fill the 60-day window.
+    </div>
+    """, unsafe_allow_html=True)
 
-    manual_data = []
+    header = st.columns(5)
+    for col, name in zip(header, ["Open", "High", "Low", "Close", "Volume"]):
+        col.markdown(f"<div style='font-size:0.75rem;font-weight:600;color:#6b7280;text-align:center'>{name}</div>", unsafe_allow_html=True)
+
+    manual_rows = []
+    defaults = {"Open": 25000.0, "High": 25500.0, "Low": 24500.0, "Close": 25200.0, "Volume": 1000000.0}
     for i in range(5):
         cols = st.columns(5)
         row = [
-            cols[0].number_input(f"Open {i+1}", value=25000.0, key=f"o{i}"),
-            cols[1].number_input(f"High {i+1}", value=25500.0, key=f"h{i}"),
-            cols[2].number_input(f"Low {i+1}",  value=24500.0, key=f"l{i}"),
-            cols[3].number_input(f"Close {i+1}", value=25200.0, key=f"c{i}"),
-            cols[4].number_input(f"Vol {i+1}",  value=1000000.0, key=f"v{i}"),
+            cols[0].number_input("", value=defaults["Open"],   key=f"o{i}", label_visibility="collapsed"),
+            cols[1].number_input("", value=defaults["High"],   key=f"h{i}", label_visibility="collapsed"),
+            cols[2].number_input("", value=defaults["Low"],    key=f"l{i}", label_visibility="collapsed"),
+            cols[3].number_input("", value=defaults["Close"],  key=f"c{i}", label_visibility="collapsed"),
+            cols[4].number_input("", value=defaults["Volume"], key=f"v{i}", label_visibility="collapsed"),
         ]
-        manual_data.append(row)
+        manual_rows.append(row)
 
-# ── Predict button ────────────────────────────────────────────
-st.markdown("---")
-predict_btn = st.button("🚀 Predict Next Day Close Price")
+# ── Predict ───────────────────────────────────────────────────
+st.markdown("""
+    <style>
+    div.stButton { text-align: center; }
+    div.stButton > button { margin: auto; display: block; }
+    </style>
+""", unsafe_allow_html=True)
 
-if predict_btn:
-    try:
-        # Prepare data
-        if st.session_state.df_uploaded is not None:
-            df = st.session_state.df_uploaded
-            features = ["Open", "High", "Low", "Close", "Volume"]
-            missing = [f for f in features if f not in df.columns]
-            if missing:
-                st.error(f"❌ CSV thiếu cột: {missing}")
-                st.stop()
-            if len(df) < 60:
-                st.error(f"❌ Cần ít nhất 60 rows, hiện có {len(df)}")
-                st.stop()
-            window = df[features].tail(60).values.tolist()
-        else:
-            # Pad manual data to 60 rows by repeating
-            arr = np.array(manual_data)
-            arr = np.tile(arr, (12, 1))[:60]
-            window = arr.tolist()
+_, btn_col, _ = st.columns([1, 2, 1])
+with btn_col:
+    predict = st.button("RUN PREDICTION", use_container_width=True)
 
-        # Call API
-        with st.spinner("🔄 Đang dự đoán..."):
+if predict:
+    # Build window
+    if st.session_state.df is not None:
+        df = st.session_state.df
+        window = df[FEATURES].tail(WINDOW_SIZE).values.tolist()
+        last_close = float(df["Close"].iloc[-1])
+    else:
+        arr = np.tile(np.array(manual_rows), (12, 1))[:WINDOW_SIZE]
+        window = arr.tolist()
+        last_close = float(manual_rows[-1][3])
+
+    with st.spinner("Calling prediction API..."):
+        try:
             resp = requests.post(api_url, json={"window": window}, timeout=30)
 
-        if resp.status_code == 200:
-            result = resp.json()
-            predicted = result["predicted_close"]
+            if resp.status_code == 200:
+                predicted = resp.json()["predicted_close"]
+                change    = predicted - last_close
+                pct       = (change / last_close) * 100 if last_close != 0 else 0
+                direction = "positive" if change >= 0 else "negative"
+                sign      = "+" if change >= 0 else ""
 
-            # Get last close for comparison
-            if uploaded is not None:
-                last_close = df["Close"].iloc[-1]
+                st.markdown(f"""
+                <div class="result-row">
+                    <div class="result-card">
+                        <div class="result-card-label">Predicted Close</div>
+                        <div class="result-card-value">{predicted:,.0f}</div>
+                        <div class="result-card-unit">VND — next trading day</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="result-card-label">Change vs Last Close</div>
+                        <div class="result-card-value {direction}">{sign}{change:,.0f}</div>
+                        <div class="result-card-unit">VND absolute</div>
+                    </div>
+                    <div class="result-card">
+                        <div class="result-card-label">Percentage Change</div>
+                        <div class="result-card-value {direction}">{sign}{pct:.2f}%</div>
+                        <div class="result-card-unit">vs last close {last_close:,.0f} VND</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+                # Chart
+                if st.session_state.df is not None:
+                    st.markdown("<hr>", unsafe_allow_html=True)
+                    st.markdown('<div class="section-label">Price History + Prediction</div>', unsafe_allow_html=True)
+
+                    history = st.session_state.df["Close"].tail(30).reset_index(drop=True)
+                    chart_df = pd.DataFrame({
+                        "Historical Close": pd.concat(
+                            [history, pd.Series([None])], ignore_index=True
+                        ),
+                        "Predicted": pd.Series(
+                            [None] * len(history) + [predicted]
+                        ),
+                    })
+                    st.line_chart(chart_df, use_container_width=True, height=280)
+
             else:
-                last_close = manual_data[-1][3]
+                st.error(f"API returned error {resp.status_code}: {resp.text}")
 
-            change = predicted - last_close
-            pct = (change / last_close) * 100
-
-            st.markdown("---")
-            st.markdown("### 🎯 Kết quả dự đoán")
-
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Predicted Close</div>
-                    <div class="metric-value">{predicted:,.0f}</div>
-                    <div class="metric-label">VND</div>
-                </div>""", unsafe_allow_html=True)
-            with c2:
-                color = "#00ff9d" if change >= 0 else "#ff4d6d"
-                arrow = "▲" if change >= 0 else "▼"
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Change</div>
-                    <div class="metric-value" style="color:{color}">{arrow} {abs(change):,.0f}</div>
-                    <div class="metric-label">VND</div>
-                </div>""", unsafe_allow_html=True)
-            with c3:
-                st.markdown(f"""
-                <div class="metric-card">
-                    <div class="metric-label">Change %</div>
-                    <div class="metric-value" style="color:{color}">{pct:+.2f}%</div>
-                    <div class="metric-label">vs Last Close</div>
-                </div>""", unsafe_allow_html=True)
-
-            # Chart
-            if st.session_state.df_uploaded is not None:
-                st.markdown("### 📊 Price History + Prediction")
-                chart_df = st.session_state.df_uploaded["Close"].tail(30).reset_index(drop=True)
-                pred_point = pd.Series([None] * len(chart_df) + [predicted])
-                hist_point = pd.concat([chart_df, pd.Series([None])], ignore_index=True)
-                chart_data = pd.DataFrame({"Historical": hist_point, "Predicted": pred_point})
-                st.line_chart(chart_data, use_container_width=True)
-
-        else:
-            st.error(f"❌ API Error {resp.status_code}: {resp.text}")
-
-    except requests.exceptions.ConnectionError:
-        st.error("❌ Không kết nối được API. Hãy chạy: `uvicorn api:app --reload`")
-    except Exception as e:
-        st.error(f"❌ Lỗi: {e}")
+        except requests.exceptions.ConnectionError:
+            st.error("Cannot connect to the API. Make sure the server is running: uvicorn api:app --reload")
+        except Exception as e:
+            st.error(f"Unexpected error: {e}")

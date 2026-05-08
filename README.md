@@ -2,7 +2,9 @@
 ## Time-series Data and Application to Stock Markets
 
 **CS313 Deep Learning for Artificial Intelligence | SPRING 2026**  
+
 **Student:** Hang Ma - 230142
+
 **Professor:** Dang Huynh
 
 ---
